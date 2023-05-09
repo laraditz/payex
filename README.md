@@ -63,11 +63,11 @@ $payment = \Payex::createPayment([
 Return example:
 ```php
 [
-    "status" => true
-    "id" => "991f24s0-5470-41c5-9b3c-9841d72d32e5"
-    "ref_no" => "Xvs9k43y"
-    "currency_code" => "MYR"
-    "key" => "f5e3168fef3b5ed7826c689a37dce58e"
+    "status" => true,
+    "id" => "991f24s0-5470-41c5-9b3c-9841d72d32e5",
+    "ref_no" => "Xvs9k43y",
+    "currency_code" => "MYR",
+    "key" => "f5e3168fef3b5ed7826c689a37dce58e",
     "payment_url" => "https://api.payex.io/Payment/Form/f5e3168fef3b5ed7826c689a37dce58e"
 ]
 ```
