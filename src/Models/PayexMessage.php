@@ -9,5 +9,5 @@ class PayexMessage extends Model
 {
     use HasFactory;
 
-    
+    protected $fillable = ['action', 'request', 'response'];
 }
