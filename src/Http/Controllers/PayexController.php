@@ -32,6 +32,8 @@ class PayexController extends Controller
             logger()->info('Payex callback: Received', $request->all());
         }
 
+        event(new CallbackReceived($request->all()));
+
         $this->updatePayment('callback', $request->all());
     }
 
@@ -42,8 +44,6 @@ class PayexController extends Controller
         $description = data_get($data, 'response');
 
         if ($ref_no && $status) { // only proceed if ref no and status exists
-
-            event(new CallbackReceived($data));
 
             PayexMessage::create([
                 'action' => $action,
