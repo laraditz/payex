@@ -52,14 +52,11 @@ class PayexController extends Controller
 
             $payment = PayexPayment::where('ref_no', $ref_no)->first();
 
-            // update only if status not yet success or new status is also success
-            if ($payment && $payment->payment_status != '00' || $status == '00') {
+            // update only if status not yet success or new status is also success. only update status from callback.
+            if ($payment && $action === 'callback' && ($payment->payment_status != '00' || $status == '00')) {
                 $payment->payment_status = $status;
                 $payment->payment_description = $description;
-
-                if ($action === 'callback') {
-                    $payment->callback_response = $data;
-                }
+                $payment->callback_response = $data;
 
                 $payment->save();
             }
