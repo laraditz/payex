@@ -42,6 +42,7 @@ class PayexController extends Controller
         $ref_no = data_get($data, 'reference_number');
         $status = data_get($data, 'auth_code');
         $description = data_get($data, 'response');
+        $txn_id = data_get($data, 'txn_id');
 
         if ($ref_no && $status) { // only proceed if ref no and status exists
 
@@ -57,6 +58,9 @@ class PayexController extends Controller
                 $payment->payment_status = $status;
                 $payment->payment_description = $description;
                 $payment->callback_response = $data;
+                if ($txn_id) {
+                    $payment->txn_id = $txn_id;
+                }
 
                 $payment->save();
             }

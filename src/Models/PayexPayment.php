@@ -11,7 +11,7 @@ class PayexPayment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'id', 'ref_no', 'currency_code', 'amount', 'status', 'status_description', 'payment_status', 'payment_description',
+        'id', 'ref_no', 'txn_id', 'currency_code', 'amount', 'status', 'status_description', 'payment_status', 'payment_description',
         'customer_name', 'email', 'contact_no', 'description', 'return_url', 'callback_url', 'metadata', 'response', 'callback_response'
     ];
 
