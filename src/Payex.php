@@ -5,7 +5,9 @@ namespace Laraditz\Payex;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Laraditz\Payex\Models\PayexPayment;
+use Laraditz\Payex\Models\PayexToken;
 use LogicException;
+use Illuminate\Support\Str;
 
 class Payex
 {
@@ -31,13 +33,33 @@ class Payex
         throw_if(!$this->getEmail(), LogicException::class, 'Email is not set.');
         throw_if(!$this->getSecret(), LogicException::class, 'Secret is Key not set.');
 
+        $payexToken = PayexToken::where('email', $this->getEmail())->first();
+
+        if ($payexToken && $payexToken->expires_at?->isFuture()) {
+            return [
+                'token' => $payexToken->token,
+                'expiration' => $payexToken->expires_at?->toDateTimeString(),
+            ];
+        }
+
         $response = Http::withBasicAuth($this->getEmail(), $this->getSecret())
             ->acceptJson()
             ->post($this->getUrl('auth_token'));
 
         $response->throw();
 
-        return $response->json();
+        $result = $response->json();
+
+        if (data_get($result, 'token')) {
+            PayexToken::updateOrCreate([
+                'email' => $this->getEmail()
+            ], [
+                'token' => data_get($result, 'token'),
+                'expires_at' => data_get($result, 'expiration'),
+            ]);
+        }
+
+        return $result;
     }
 
     public function createPayment(array $requestPayload = [])
@@ -57,42 +79,101 @@ class Payex
 
         $payload = $this->preparePayload($payload);
 
-        $response = Http::withToken(data_get($token, 'token'))
+        try {
+            $response = $this->makeRequest(
+                method: 'post',
+                endPoint: $this->getUrl('payment_intent'),
+                payload: [$payload]
+            );
+
+            $resp = $response->json();
+
+            $result = data_get($resp, 'result.0');
+
+            if (data_get($resp, 'status') == '00' && $result) {
+                $payment->update([
+                    'status' => data_get($resp, 'status'),
+                    'status_description' => data_get($resp, 'message') ?? null,
+                    'response' => $result
+                ]);
+
+                return [
+                    'status' => true,
+                    'id' => $payment->id,
+                    'ref_no' => $payment->ref_no,
+                    'currency_code' => $this->getCurrencyCode(),
+                    'key' => data_get($result, 'key'),
+                    'payment_url' => data_get($result, 'url'),
+                ];
+            } else {
+                $payment->update([
+                    'status' => data_get($resp, 'status'),
+                    'status_description' => data_get($resp, 'message') ?? null,
+                ]);
+
+                return [
+                    'status' => false,
+                    'message' => data_get($resp, 'message') ?? 'Failed to create payment.',
+                ];
+            }
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function getTransaction(string $id)
+    {
+        $endPoint = Str::replace('{id}', $id, $this->getUrl('transactions.one'));
+
+        try {
+            $response = $this->makeRequest(
+                method: 'get',
+                endPoint: $endPoint
+            );
+
+            $resp = $response->json();
+
+            return $resp;
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function getTransactions(array $params = [])
+    {
+        try {
+            $response = $this->makeRequest(
+                method: 'get',
+                endPoint: $this->getUrl('transactions.index'),
+                payload: $params
+            );
+
+            $resp = $response->json();
+
+            throw_if(data_get($resp, 'status') != '00', LogicException::class, 'Failed to get transactions.');
+
+            return [
+                'result' => data_get($resp, 'result'),
+                'total_pages' => data_get($resp, 'total_pages'),
+            ];
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    private function makeRequest(string $method, string $endPoint, array|null $payload = null)
+    {
+        $token = $this->authToken();
+
+        throw_if(!$token, LogicException::class, 'Failed to get token.');
+
+        $response =  Http::withToken(data_get($token, 'token'))
             ->acceptJson()
-            ->post($this->getUrl('payment_intent'), [$payload]);
+            ->$method($endPoint, $payload);
 
         $response->throw();
 
-        $resp = $response->json();
-
-        $result = data_get($resp, 'result.0');
-
-        if (data_get($resp, 'status') == '00' && $result) {
-            $payment->update([
-                'status' => data_get($resp, 'status'),
-                'status_description' => data_get($resp, 'message') ?? null,
-                'response' => $result
-            ]);
-
-            return [
-                'status' => true,
-                'id' => $payment->id,
-                'ref_no' => $payment->ref_no,
-                'currency_code' => $this->getCurrencyCode(),
-                'key' => data_get($result, 'key'),
-                'payment_url' => data_get($result, 'url'),
-            ];
-        } else {
-            $payment->update([
-                'status' => data_get($resp, 'status'),
-                'status_description' => data_get($resp, 'message') ?? null,
-            ]);
-
-            return [
-                'status' => false,
-                'message' => data_get($resp, 'message') ?? 'Failed to create payment.',
-            ];
-        }
+        return $response;
     }
 
     private function preparePayload(array $payload): array

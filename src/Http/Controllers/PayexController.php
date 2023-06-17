@@ -32,6 +32,8 @@ class PayexController extends Controller
             logger()->info('Payex callback: Received', $request->all());
         }
 
+        event(new CallbackReceived($request->all()));
+
         $this->updatePayment('callback', $request->all());
     }
 
@@ -40,10 +42,9 @@ class PayexController extends Controller
         $ref_no = data_get($data, 'reference_number');
         $status = data_get($data, 'auth_code');
         $description = data_get($data, 'response');
+        $txn_id = data_get($data, 'txn_id');
 
         if ($ref_no && $status) { // only proceed if ref no and status exists
-
-            event(new CallbackReceived($data));
 
             PayexMessage::create([
                 'action' => $action,
@@ -52,13 +53,13 @@ class PayexController extends Controller
 
             $payment = PayexPayment::where('ref_no', $ref_no)->first();
 
-            // update only if status not yet success or new status is also success
-            if ($payment && $payment->payment_status != '00' || $status == '00') {
+            // update only if status not yet success or new status is also success. only update status from callback.
+            if ($payment && $action === 'callback' && ($payment->payment_status != '00' || $status == '00')) {
                 $payment->payment_status = $status;
                 $payment->payment_description = $description;
-
-                if ($action === 'callback') {
-                    $payment->callback_response = $data;
+                $payment->callback_response = $data;
+                if ($txn_id) {
+                    $payment->txn_id = $txn_id;
                 }
 
                 $payment->save();
