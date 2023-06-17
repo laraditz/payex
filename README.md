@@ -35,6 +35,13 @@ Run the migration command to create the necessary database table.
 php artisan migrate
 ```
 
+## Available Methods
+Below are all methods available under this package.
+
+- `createPayment(array $requestPayload)` - Create payment intent.
+- `getTransactions(array $params)` - Get all transactions.
+- `getTransaction(string $id)` - Get specific transaction by `txn_id`.
+
 ## Usage
 
 ### Create Payment
