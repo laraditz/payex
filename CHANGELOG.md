@@ -2,6 +2,11 @@
 
 All notable changes to `payex` will be documented in this file
 
+## 1.1.0 - 2024-01-26
+
+### Added
+- Add ability to overwrite callback url from `.env`.
+
 ## 1.0.1 - 2023-06-18
 
 ### Added
