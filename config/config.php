@@ -9,6 +9,7 @@ return [
     'secret' => env('PAYEX_SECRET'),
     'currency_code' => env('PAYEX_CURRENCY_CODE', 'MYR'),
     'base_url' => 'https://api.payex.io',
+    'callback_url' => env('PAYEX_CALLBACK_URL'),
     'sandbox' => [
         'mode' => env('PAYEX_SANDBOX_MODE', false),
         'base_url' => 'https://sandbox-payexapi.azurewebsites.net',
